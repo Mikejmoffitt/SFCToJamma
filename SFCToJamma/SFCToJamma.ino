@@ -5,7 +5,7 @@
   
 // Uncomment this line for single-player use with a regular Teensy 2.0
 
-#define TEENSY_PLUS
+// #define TEENSY_PLUS
   
   == WHAT IS IT ==
   Created to facilitate interaction between a Super Famicom / SNES controller and JAMMA
@@ -96,12 +96,12 @@ SFC Data1 -|11       39|-
 // -------------- Teensy 2.0 pins ----------------------
 
 // Which pin the sfcStates correspond to for a given index
-int sfcPins0[] = {
+const int sfcPins0[] = {
   21,20,19,18,
   17,16,15,14,
   13,12,10,5 };
 
-int sfcPins1[] = {
+const int sfcPins1[] = {
   26,25,24,23,
   45,44,43,42,
   41,40,38,22 };
@@ -197,11 +197,20 @@ void wait()
 
 void get_sfc_state()
 {
-  // Pull latch high to reset SFC button counter
-  digitalWrite(PIN_LATCH, HIGH);
   for (int i = 0; i < 12; i++)
   {
-    digitalWrite(PIN_CLOCK, HIGH);
+    if (i == 0)
+    {
+      // Pull latch high to reset SFC button counter
+      digitalWrite(PIN_LATCH, HIGH);
+      digitalWrite(PIN_CLOCK, LOW);
+      wait();
+    }
+    else
+    {
+      digitalWrite(PIN_CLOCK, HIGH); 
+    }
+    wait();
     sfcState[0][i] = digitalRead(PIN_DATA0);
     
     #ifdef TEENSY_PLUS
@@ -210,13 +219,11 @@ void get_sfc_state()
     #ifndef TEENSY_PLUS
     sfcState[1][i] = 1;
     #endif
-    wait();
     if (i == 0)
     {
       // Bring down the latch for the first run
       digitalWrite(PIN_LATCH, LOW);
     }
-    
     // Clock for the next key
     digitalWrite(PIN_CLOCK, LOW);
     wait();
