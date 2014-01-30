@@ -37,53 +37,7 @@ NOTE: For two Super Famicom controllers in the Teensy++ 2.0 configuration, the l
 CLOCK and LATCH are shared (run to both controller ports). Only DATA0 and DATA1 are 
 individual, so don't be alarmed thinking you missed something.
     
-  // Pin assignment for a Teensy 2.0 (single player)
-            __ _____ __
-      GND -|  | USB |  |- 5V
-          -|  |_____|21|- B
-          -|         20|- Y
-          -|         19|- Sel
-          -|         18|- Start
-          -|         17|- Up
-        R -|5        16|- Down
-          -|         15|- Left
-SFC Data0 -|7        14|- Right
-SFC Clock -|8        13|- A
-SFC Latch -|9        12|- X
-        L -|10_______11|- LED PIN (Shows that it works)
-            | | | | |
-
-   // Pin assignment for a Teensy++ 2.0 (two player)
-            __ _____ __
-      GND -|  | USB |  |- 5V
-          -|  |_____|26|- 2-B
-          -|         25|- 2-Y
-          -|         24|- 2-Sel
-          -|         23|- 2-Start
-          -|         22|- 2-R
-          -|         21|- 1-B
-      1-R -|5        20|- 1-Y
-  LED PIN -|6        19|- 1-Sel
-SFC Data0 -|7        18|- 1-Start
-SFC Clock -|8          |- GND
-SFC Latch -|9          |- 
-      1-L -|10       38|- 2-L
-SFC Data1 -|11       39|- 
-      1-X -|12       40|- 2-X
-      1-A -|13       41|- 2-A
-  1-Right -|14       42|- 2-Right
-   1-Left -|15       43|- 2-Left
-   1-Down -|16       44|- 2-Down
-     1-Up -|17_o_o_o_45|- 2-Up
-   
-                 
-   // Assignments for the 2 x 2 Neo Geo layout if that's what you're into
-   SFC      NEO GEO
-   A        D
-   B        B
-   X        C
-   Y        A
-   
+Pinouts are visible in the comments in the code.
    
 == BORING THINGS ==
 
