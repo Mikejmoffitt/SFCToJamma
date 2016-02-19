@@ -106,18 +106,14 @@ void setup()
   // SFC pins
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
-  pinMode(PIN_DATA0, INPUT);
-  pinMode(PIN_INDICATOR, OUTPUT);
-  #ifdef TEENSY_PLUS
-  pinMode(PIN_DATA0, INPUT);
-  #endif
-  digitalWrite(PIN_INDICATOR, LOW);
+  pinMode(PIN_DATA0, INPUT_PULLUP);
+  pinMode(PIN_DATA1, INPUT_PULLUP);
   
   for (int i = 0; i < NUM_SCANNED; i++)
   {
     // Set the pin to input (to float it)
-    pinMode(sfcPins0[i], INPUT);
-    pinMode(sfcPins1[i], INPUT);
+    pinMode(sfcPins0[i], INPUT_PULLUP);
+    pinMode(sfcPins1[i], INPUT_PULLUP);
     for (int j = 0; j < 2; j++)
     {
       // Clear the state
@@ -130,12 +126,12 @@ void pset(int pin, int state)
 {
    if (state == 0)
    {
-     pinMode(pin, OUTPUT);
      digitalWrite(pin, LOW);
+     pinMode(pin, OUTPUT);
    }
    else
    {
-     pinMode(pin, INPUT);
+     pinMode(pin, INPUT_PULLUP);
    }
 }
 
@@ -175,13 +171,8 @@ void get_sfc_state()
     }
     wait();
     sfcState[0][i] = digitalRead(PIN_DATA0);
-    
-    #ifdef TEENSY_PLUS
     sfcState[1][i] = digitalRead(PIN_DATA1);
-    #endif
-    #ifndef TEENSY_PLUS
-    sfcState[1][i] = 1;
-    #endif
+    
     if (i == 0)
     {
       // Bring down the latch for the first run
