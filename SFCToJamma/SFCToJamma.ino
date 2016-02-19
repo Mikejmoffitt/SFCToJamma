@@ -38,50 +38,23 @@
   board's inputs are activated on a logic LOW and have pull up resistors on each input. 
   The arcade board expects the buttons to work this way, so I'm not going to be pulling up
   any lines from the board. 
-  
-  NOTE: For two Super Famicom controllers in the Teensy++ 2.0 configuration, the lines for
-  CLOCK and LATCH are shared (run to both controller ports). Only DATA0 and DATA1 are 
-  individual, so don't be alarmed thinking you missed something.
     
   // Pin assignment for a Teensy 2.0 (single player)
-            __ _____ __
+       P1   __ _____ __   P2
       GND -|  | USB |  |- 5V
-          -|  |_____|21|- B
-          -|         20|- Y
-          -|         19|- Sel
-          -|         18|- Start
-          -|         17|- Up
-        R -|5        16|- Down
-          -|         15|- Left
-SFC Data0 -|7        14|- Right
-SFC Clock -|8        13|- A
-SFC Latch -|9        12|- X
-        L -|10_______11|- LED PIN (Shows that it works)
+      1 U -|0 |_____|21|- 2 U
+      1 D -|1        20|- 2 D
+      1 L -|2        19|- 2 L
+      1 R -|3        18|- 2 R
+      1 Y -|4        17|- 2 Y
+      1 B -|5        16|- 2 B
+      1 X -|6        15|- 2 X
+      1 A -|7        14|- 2 A
+  1 Start -|8        13|- 2 Start
+ 1 Select -|9        12|- 2 Select
+  SFC D0  -|10_______11|- SFC D1
             | | | | |
-
-   // Pin assignment for a Teensy++ 2.0 (two player)
-            __ _____ __
-      GND -|  | USB |  |- 5V
-          -|  |_____|26|- 2-B
-          -|         25|- 2-Y
-          -|         24|- 2-Sel
-          -|         23|- 2-Start
-          -|         22|- 2-R
-          -|         21|- 1-B
-      1-R -|5        20|- 1-Y
-  LED PIN -|6        19|- 1-Sel
-SFC Data0 -|7        18|- 1-Start
-SFC Clock -|8          |- GND
-SFC Latch -|9          |- 
-      1-L -|10       38|- 2-L
-SFC Data1 -|11       39|- 
-      1-X -|12       40|- 2-X
-      1-A -|13       41|- 2-A
-  1-Right -|14       42|- 2-Right
-   1-Left -|15       43|- 2-Left
-   1-Down -|16       44|- 2-Down
-     1-Up -|17_o_o_o_45|- 2-Up
-   
+     Clock 23       22 Latch   
                  
    // Assignments for the 2 x 2 Neo Geo layout if that's what you're into
    SFC      NEO GEO
@@ -97,32 +70,33 @@ SFC Data1 -|11       39|-
 
 // Which pin the sfcStates correspond to for a given index
 const int sfcPins0[] = {
-  21,20,19,18,
-  17,16,15,14,
-  13,12,10,5 };
+  5, 4, 9, 8, 
+  0, 1, 2, 3, 
+  7, 6};
 
 const int sfcPins1[] = {
-  26,25,24,23,
-  45,44,43,42,
-  41,40,38,22 };
+  16, 17, 12, 13,
+  21, 20, 19, 18, 
+  14, 15};
 
 // Change the indicator LED based on the system in use
-#ifndef TEENSY_PLUS
 #define PIN_INDICATOR 11
-#endif
-#ifdef TEENSY_PLUS
-#define PIN_INDICATOR 6
-#endif
 
 // SFC controller pins
-#define PIN_DATA0 7
+#define PIN_DATA0 10
 #define PIN_DATA1 11
-#define PIN_CLOCK 8
-#define PIN_LATCH 9
+#define PIN_CLOCK 23
+#define PIN_LATCH 22
+
+// Number of positions to read from SFC controller
+#define NUM_BUTTONS 12
+
+// We ignore L and R
+#define NUM_SCANNED 10
 
 // SFC Inputs - Low means it is pressed
 // B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R 
-int sfcState[2][12];
+int sfcState[2][NUM_BUTTONS];
 
 
 // Reset vector
@@ -139,7 +113,7 @@ void setup()
   #endif
   digitalWrite(PIN_INDICATOR, LOW);
   
-  for (int i = 0; i < 12; i++)
+  for (int i = 0; i < NUM_SCANNED; i++)
   {
     // Set the pin to input (to float it)
     pinMode(sfcPins0[i], INPUT);
@@ -150,17 +124,6 @@ void setup()
       sfcState[j][i] = 1; 
     }
   }  
-  // LED pulse to show that it works
-  for (int i = 0; i < 6; i++)
-  { 
-    delay(20); // 33% duty
-    digitalWrite(PIN_INDICATOR, HIGH);
-    delay(10);
-    digitalWrite(PIN_INDICATOR, LOW);
-  }
-  digitalWrite(PIN_INDICATOR, HIGH);
-  delay(300);
-  digitalWrite(PIN_INDICATOR, LOW);
 }
 
 void pset(int pin, int state)
@@ -179,7 +142,7 @@ void pset(int pin, int state)
 // Using the sfcState, set the corresponding pin LOW or HIGH-Z
 void set_output()
 {
-  for (int i = 0; i < 12; i++)
+  for (int i = 0; i < NUM_SCANNED; i++)
   {
       pset(sfcPins0[i],sfcState[0][i]);
       pset(sfcPins1[i],sfcState[1][i]);
@@ -189,7 +152,7 @@ void set_output()
 // Wait for a shorter time than delay(1);
 void wait()
 {
-  for (int i = 0; i < 800; i++)
+  for (int i = 0; i < 600; i++)
   {
     asm("nop\n\t"); 
   }
@@ -197,7 +160,7 @@ void wait()
 
 void get_sfc_state()
 {
-  for (int i = 0; i < 12; i++)
+  for (int i = 0; i < NUM_BUTTONS; i++)
   {
     if (i == 0)
     {
