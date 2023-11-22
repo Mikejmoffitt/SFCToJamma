@@ -41,11 +41,12 @@ void SFCDecoder::Poll()
 	{
 		for (int j = 0; j < kControllerCount; j++)
 		{
-			m_buttons[j] |= (digitalRead(m_config.pin_data[j]) ? (1 << i) : 0);
+			m_buttons[j] |= (digitalRead(m_config.pin_data[j]) ? 0 : (1 << i));
 		}
 		digitalWrite(m_config.pin_clock_out, LOW);
 		Wait();
 		digitalWrite(m_config.pin_clock_out, HIGH);
+		Wait();
 	}
 }
 

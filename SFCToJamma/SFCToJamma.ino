@@ -2,21 +2,23 @@
 // Original (c) 2014 Michael Moffitt
 // Rewrite (c) 2023 Michael Moffitt
 
+// #define WANT_TEST_SERIAL_OUT
+
 /*
 
   // Pin assignment for a Teensy 2.0 (single player)
-       P1   __ _____ __   P2
+       P2   __ _____ __   P1
       GND -|  | USB |  |- 5V
-      1 U -|0 |_____|21|- 2 U
-      1 D -|1        20|- 2 D
-      1 L -|2        19|- 2 L
-      1 R -|3        18|- 2 R
-      1 Y -|4        17|- 2 Y
-      1 B -|5        16|- 2 B
-      1 X -|6        15|- 2 X
-      1 A -|7        14|- 2 A
-  1 Start -|8        13|- 2 Start
-   1 Coin -|9        12|- 2 Coin
+     Coin -|0 |_____|21|- Coin
+    Start -|1        20|- Start
+        D -|2        19|- D
+        C -|3        18|- C
+        B -|4        17|- B
+        A -|5        16|- A
+    Right -|6        15|- Right
+     Left -|7        14|- Left
+     Down -|8        13|- Down
+       Up -|9        12|- Up
    SFC D0 -|10_______11|- SFC D1
             | | | | |
      Clock 23       22 Latch
@@ -26,16 +28,20 @@
 #include "sfc_decode.h"
 #include "jamma_out.h"
 
+#ifdef WANT_TEST_SERIAL_OUT
+#include <stdio.h>
+#endif  // WANT_TEST_SERIAL_OUT
+
 namespace
 {
 	// Output pin mappings for players based on Teensy 2.0.
 	constexpr Mof::JammaPlayer::Config kJammaConfigP1 =
 	{
-		{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+		{12, 13, 14, 15, 16, 17, 18, 19, 20, 21}
 	};
 	constexpr Mof::JammaPlayer::Config kJammaConfigP2 =
 	{
-		{21, 20, 19, 18, 17, 16, 15, 14, 13, 12}
+		{9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
 	};
 
 	constexpr Mof::SFCDecoder::Config kSFCDecoderConfig =
@@ -51,6 +57,11 @@ namespace
 
 	void UpdateJamma(Mof::JammaPlayer &jamma, const uint16_t sfc_data)
 	{
+#ifdef WANT_TEST_SERIAL_OUT
+		char msg[64];
+		snprintf(msg, sizeof(msg), "Jamma %p : $%04X\n", &jamma, sfc_data);
+		Serial.write(msg);
+#endif  // WANT_TEST_SERIAL_OUT
 		jamma.SetButton(Mof::JammaPlayer::Button::Up,
 		                sfc_data & Mof::SFCDecoder::kBtnUp);
 		jamma.SetButton(Mof::JammaPlayer::Button::Down,
@@ -78,6 +89,10 @@ namespace
 void setup()
 {
 	// Necessary data initialization is carried out in constructors.
+#ifdef WANT_TEST_SERIAL_OUT
+	Serial.begin(9600);
+	Serial.write("Begin");
+#endif  // WANT_TEST_SERIAL_OUT
 }
 
 void loop()
@@ -86,4 +101,7 @@ void loop()
 	// TODO: Interactive user button remapping and autofire
 	UpdateJamma(jamma_p1, sfc_decoder.GetButtons(0));
 	UpdateJamma(jamma_p2, sfc_decoder.GetButtons(1));
+#ifdef WANT_TEST_SERIAL_OUT
+	delay(100);
+#endif  // WANT_TEST_SERIAL_OUT
 }

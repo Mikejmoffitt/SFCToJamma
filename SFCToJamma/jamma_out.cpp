@@ -39,6 +39,12 @@ void JammaPlayer::SetOutput() const
 		const bool button_pressed = m_user_state[i];
 		const Button logical_button = m_user_mapping[i];
 		const int output_pin = m_config.output_pin_mapping[static_cast<int>(logical_button)];
+    
+#ifdef WANT_TEST_SERIAL_OUT
+		char msg[64];
+		snprintf(msg, sizeof(msg), "Jamma %p : pin %d = btn %d : %d\n", this, output_pin, static_cast<int>(logical_button), button_pressed);
+		Serial.write(msg);
+#endif  // WANT_TEST_SERIAL_OUT
 		// Set to drive LOW or set to HI-Z (input) based on button.
 		pinMode(output_pin, button_pressed ? OUTPUT : INPUT);
 	}
