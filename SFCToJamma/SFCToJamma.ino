@@ -1,44 +1,9 @@
-/*
-  JammaSFC
-  Michael Moffitt
-  http://mikejmoffitt.com
-  
-// Uncomment this line for single-player use with a regular Teensy 2.0
+// Super Famicom controller-based JAMMA controller
+// Original (c) 2014 Michael Moffitt
+// Rewrite (c) 2023 Michael Moffitt
 
-// #define TEENSY_PLUS
-  
-  == WHAT IS IT ==
-  Created to facilitate interaction between a Super Famicom / SNES controller and JAMMA
-  arcade boards. Can be used for Atari 2600/7800/800, Master System, other arcade PCBs, 
-  and pad-hacks of practically any other system. The system is easy to solder to a JAMMA 
-  slot, a cable for the above-mentioned systems, and a Sega Genesis with a tiny bit of
-  additional logic.
-  
-  == WHICH PADS CAN I USE ON IT ==
-  An original Super Famicom or Super Nintendo controller is the target use case. I have
-  tested with a knockoff that worked equally well. 
-  
-  The SNES Mouse and other weird attachments have not been explicitly supported. I don't 
-  know why anyone would expect this, nor what those would do if attached.
-  
-  An original NES or Famicom controller, however, *is* supported, as the SFC controller 
-  protocol is simply an 8-bit extension of the original NES / Famicom one. For the NES/FC
-  substitute the "B/Y" button nomenclature with "A/B". There is a good reason Nintendo made
-  the Super Famicom output the buttons in the order it does, and it is for this NES/FC 
-  protocol compatibility.
-  
-  == WHAT'S GOING ON =
-  When buttons are held down on the SFC controller, the Teensy sets the corresponding pin
-  to an output, and writes a LOW signal.
-  
-  When a button is released, the Teensy sets the corresponding pin to an input which puts
-  the pin in a HIGH-Z state ( floating ). 
-  
-  This is so the system may mimic an actual button as much as possible. A real arcade 
-  board's inputs are activated on a logic LOW and have pull up resistors on each input. 
-  The arcade board expects the buttons to work this way, so I'm not going to be pulling up
-  any lines from the board. 
-    
+/*
+
   // Pin assignment for a Teensy 2.0 (single player)
        P1   __ _____ __   P2
       GND -|  | USB |  |- 5V
@@ -51,143 +16,74 @@
       1 X -|6        15|- 2 X
       1 A -|7        14|- 2 A
   1 Start -|8        13|- 2 Start
- 1 Select -|9        12|- 2 Select
-  SFC D0  -|10_______11|- SFC D1
+   1 Coin -|9        12|- 2 Coin
+   SFC D0 -|10_______11|- SFC D1
             | | | | |
-     Clock 23       22 Latch   
-                 
-   // Assignments for the 2 x 2 Neo Geo layout if that's what you're into
-   SFC      NEO GEO
-   A        D
-   B        B
-   X        C
-   Y        A
-   
-   
+     Clock 23       22 Latch
+
  */
 
-// -------------- Teensy 2.0 pins ----------------------
+#include "sfc_decode.h"
+#include "jamma_out.h"
 
-// Which pin the sfcStates correspond to for a given index
-const int sfcPins0[] = {
-  5, 4, 9, 8, 
-  0, 1, 2, 3, 
-  7, 6};
+namespace
+{
+	// Output pin mappings for players based on Teensy 2.0.
+	constexpr Mof::JammaPlayer::Config kJammaConfigP1 =
+	{
+		{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	};
+	constexpr Mof::JammaPlayer::Config kJammaConfigP2 =
+	{
+		{21, 20, 19, 18, 17, 16, 15, 14, 13, 12}
+	};
 
-const int sfcPins1[] = {
-  16, 17, 12, 13,
-  21, 20, 19, 18, 
-  14, 15};
+	constexpr Mof::SFCDecoder::Config kSFCDecoderConfig =
+	{
+		23, 22, {10, 11}
+	};
 
-// Change the indicator LED based on the system in use
-#define PIN_INDICATOR 11
+	constexpr int kPinLed = 11;  // Shared with SFC D1...
 
-// SFC controller pins
-#define PIN_DATA0 10
-#define PIN_DATA1 11
-#define PIN_CLOCK 23
-#define PIN_LATCH 22
+	Mof::JammaPlayer jamma_p1{kJammaConfigP1};
+	Mof::JammaPlayer jamma_p2{kJammaConfigP2};
+	Mof::SFCDecoder sfc_decoder{kSFCDecoderConfig};
 
-// Number of positions to read from SFC controller
-#define NUM_BUTTONS 12
+	void UpdateJamma(Mof::JammaPlayer &jamma, const uint16_t sfc_data)
+	{
+		jamma.SetButton(Mof::JammaPlayer::Button::Up,
+		                sfc_data & Mof::SFCDecoder::kBtnUp);
+		jamma.SetButton(Mof::JammaPlayer::Button::Down,
+		                sfc_data & Mof::SFCDecoder::kBtnDown);
+		jamma.SetButton(Mof::JammaPlayer::Button::Left,
+		                sfc_data & Mof::SFCDecoder::kBtnLeft);
+		jamma.SetButton(Mof::JammaPlayer::Button::Right,
+		                sfc_data & Mof::SFCDecoder::kBtnRight);
+		jamma.SetButton(Mof::JammaPlayer::Button::A,
+		                sfc_data & Mof::SFCDecoder::kBtnY);
+		jamma.SetButton(Mof::JammaPlayer::Button::B,
+		                sfc_data & Mof::SFCDecoder::kBtnB);
+		jamma.SetButton(Mof::JammaPlayer::Button::C,
+		                sfc_data & Mof::SFCDecoder::kBtnX);
+		jamma.SetButton(Mof::JammaPlayer::Button::D,
+		                sfc_data & Mof::SFCDecoder::kBtnA);
+		jamma.SetButton(Mof::JammaPlayer::Button::Start,
+		                sfc_data & Mof::SFCDecoder::kBtnStart);
+		jamma.SetButton(Mof::JammaPlayer::Button::Coin,
+		                sfc_data & Mof::SFCDecoder::kBtnSelect);
+		jamma.SetOutput();
+	}
+}  // namespace
 
-// We ignore L and R
-#define NUM_SCANNED 10
-
-// SFC Inputs - Low means it is pressed
-// B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R 
-int sfcState[2][NUM_BUTTONS];
-
-
-// Reset vector
-void setup() 
-{   
-  
-  // SFC pins
-  pinMode(PIN_LATCH, OUTPUT);
-  pinMode(PIN_CLOCK, OUTPUT);
-  pinMode(PIN_DATA0, INPUT_PULLUP);
-  pinMode(PIN_DATA1, INPUT_PULLUP);
-  
-  for (int i = 0; i < NUM_SCANNED; i++)
-  {
-    // Set the pin to input (to float it)
-    pinMode(sfcPins0[i], INPUT_PULLUP);
-    pinMode(sfcPins1[i], INPUT_PULLUP);
-    for (int j = 0; j < 2; j++)
-    {
-      // Clear the state
-      sfcState[j][i] = 1; 
-    }
-  }  
+void setup()
+{
+	// Necessary data initialization is carried out in constructors.
 }
 
-void pset(int pin, int state)
+void loop()
 {
-   if (state == 0)
-   {
-     digitalWrite(pin, LOW);
-     pinMode(pin, OUTPUT);
-   }
-   else
-   {
-     pinMode(pin, INPUT_PULLUP);
-   }
-}
-
-// Using the sfcState, set the corresponding pin LOW or HIGH-Z
-void set_output()
-{
-  for (int i = 0; i < NUM_SCANNED; i++)
-  {
-      pset(sfcPins0[i],sfcState[0][i]);
-      pset(sfcPins1[i],sfcState[1][i]);
-  }
-}
-
-// Wait for a shorter time than delay(1);
-void wait()
-{
-  for (int i = 0; i < 600; i++)
-  {
-    asm("nop\n\t"); 
-  }
-}
-
-void get_sfc_state()
-{
-  for (int i = 0; i < NUM_BUTTONS; i++)
-  {
-    if (i == 0)
-    {
-      // Pull latch high to reset SFC button counter
-      digitalWrite(PIN_LATCH, HIGH);
-      digitalWrite(PIN_CLOCK, LOW);
-      wait();
-    }
-    else
-    {
-      digitalWrite(PIN_CLOCK, HIGH); 
-    }
-    wait();
-    sfcState[0][i] = digitalRead(PIN_DATA0);
-    sfcState[1][i] = digitalRead(PIN_DATA1);
-    
-    if (i == 0)
-    {
-      // Bring down the latch for the first run
-      digitalWrite(PIN_LATCH, LOW);
-    }
-    // Clock for the next key
-    digitalWrite(PIN_CLOCK, LOW);
-    wait();
-  }
-}
-
-// the loop routine runs over and over again forever:
-void loop() 
-{
-  get_sfc_state(); // Grab SFC controller state
-  set_output(); // Set the output pins based on SFC pad
-  delay(6);
+	sfc_decoder.Poll();
+	// TODO: Interactive user button remapping and autofire
+	UpdateJamma(jamma_p1, sfc_decoder.GetButtons(0));
+	UpdateJamma(jamma_p2, sfc_decoder.GetButtons(1));
 }
